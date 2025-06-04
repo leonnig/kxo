@@ -6,8 +6,8 @@
 #include <string.h>
 #include <sys/select.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
-
 #include "game.h"
 
 #define XO_STATUS_FILE "/sys/module/kxo/initstate"
@@ -82,6 +82,29 @@ static void listen_keyboard_handler(void)
     close(attr_fd);
 }
 
+/* Draw the board in user space */
+static int draw_board(const char *table)
+{
+    int i = 0, k = 0;
+    printf("\n");
+    printf("\n");
+
+    while (i < 4) {
+        for (int j = 0; j < (BOARD_SIZE << 1) - 1 && k < N_GRIDS; j++) {
+            printf("%c", j & 1 ? '|' : table[k++]);
+        }
+        printf("\n");
+        for (int j = 0; j < (BOARD_SIZE << 1) - 1; j++) {
+            printf("%c", '-');
+        }
+        printf("\n");
+        i++;
+    }
+
+
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     if (!status_check())
@@ -91,7 +114,7 @@ int main(int argc, char *argv[])
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
 
-    char display_buf[DRAWBUFFER_SIZE];
+    char display_buf[N_GRIDS];
 
     fd_set readset;
     int device_fd = open(XO_DEVICE_FILE, O_RDONLY);
@@ -110,18 +133,18 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
+
         if (FD_ISSET(STDIN_FILENO, &readset)) {
             FD_CLR(STDIN_FILENO, &readset);
             listen_keyboard_handler();
         } else if (read_attr && FD_ISSET(device_fd, &readset)) {
             FD_CLR(device_fd, &readset);
             printf("\033[H\033[J"); /* ASCII escape code to clear the screen */
-            read(device_fd, display_buf, DRAWBUFFER_SIZE);
-            display_buf[DRAWBUFFER_SIZE - 1] = '\0';
-            printf("%s", display_buf);
+            read(device_fd, display_buf,
+                 N_GRIDS);  // Reduce the number of bytes read
+            draw_board(display_buf);
         }
     }
-
     raw_mode_disable();
     fcntl(STDIN_FILENO, F_SETFL, flags);
 
