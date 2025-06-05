@@ -82,6 +82,10 @@ static void listen_keyboard_handler(void)
     close(attr_fd);
 }
 
+time_t now;
+struct tm *time_info;
+char t_str[20];
+
 /* Draw the board in user space */
 static int draw_board(const char *table)
 {
@@ -101,6 +105,10 @@ static int draw_board(const char *table)
         i++;
     }
 
+    time(&now);
+    time_info = localtime(&now);
+    strftime(t_str, 20, "%Y-%m-%d %H:%M-%S", time_info);
+    printf("\n%s \n", t_str);
 
     return 0;
 }
